@@ -28,27 +28,29 @@ module VestalVersions
     included do
       belongs_to :user, :polymorphic => true
 
-      alias_method_chain :user, :name
-      alias_method_chain :user=, :name
+      # Prepended so these sit in front of the methods the polymorphic +belongs_to+ generates,
+      # and reach them with +super+. (Replaces alias_method_chain, removed in Rails 5.1.)
+      prepend UserNameFallback
     end
+  end
 
+  module UserNameFallback
     # Overrides the +user+ method created by the polymorphic +belongs_to+ user association. If
     # the association is absent, defaults to the +user_name+ string column. This allows
     # VestalVersions::Version#user to either return an ActiveRecord::Base object or a string,
-    # depending on what is sent to the +user_with_name=+ method.
-    def user_with_name
-      user_without_name || user_name
+    # depending on what is sent to the +user=+ method.
+    def user
+      super || user_name
     end
 
     # Overrides the +user=+ method created by the polymorphic +belongs_to+ user association.
     # Based on the class of the object given, either the +user+ association columns or the
     # +user_name+ string column is populated.
-    def user_with_name=(value)
+    def user=(value)
       case value
-        when ActiveRecord::Base then self.user_without_name = value
+        when ActiveRecord::Base then super(value)
         else self.user_name = value
       end
     end
-
   end
 end
